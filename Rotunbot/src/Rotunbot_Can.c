@@ -743,6 +743,27 @@ void DriverEnable(void)
             thirdAxisModeSelect(1);
         }
     }
+		if((driver_state_word & 0x1000) != 0) //主轴故障
+		{
+			Can_Msg_MDL = enable_set; // 主轴不使能
+				Can_Msg_MDH = servo_off;
+				CAN_sendFirstAxis();
+				HAL_Delay(1);
+		}
+		if((driver_state_word & 0x0400) != 0) //副轴故障
+		{
+			Can_Msg_MDL = enable_set; // 主轴不使能
+			Can_Msg_MDH = servo_off;
+			CAN_sendSecondAxis();
+			HAL_Delay(1);
+		}
+		if((driver_state_word & 0x4000) != 0) //动量轮故障
+		{
+			Can_Msg_MDL = enable_set; // 主轴不使能
+			Can_Msg_MDH = servo_off;
+			CAN_sendThirdAxis();
+			HAL_Delay(1);
+		}
 }
 /***********************************************
 函数名称：imuFeedback
@@ -1060,6 +1081,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
                 driver_state_word &= 0xFFF7; // 主轴模式位reset
             }
             Current_FirstAxis = (short)(Can_Rx_Buff[2] << 8) | (Can_Rx_Buff[1]);
+						driver_state_word |= ((Can_Rx_Buff[3]&0x08)<<9);
         }
         else if (RxHeader.StdId == CAN_ID_17)
         {
@@ -1080,6 +1102,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
                 driver_state_word &= 0xFFFE; // 副轴模式位reset
             }
             Current_SecondAxis = (short)(Can_Rx_Buff[2] << 8) | (Can_Rx_Buff[1]);
+						driver_state_word |= ((Can_Rx_Buff[3]&0x08)<<7);
         }
         else if (RxHeader.StdId == CAN_ID_19)
         {
@@ -1099,6 +1122,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             		driver_state_word &= 0xFFBF;      //动量轮模式位reset
             	}
             Current_ThirdAxis = (short)(Can_Rx_Buff[2] << 8) | (Can_Rx_Buff[1]);
+						driver_state_word |= ((Can_Rx_Buff[3]&0x08)<<11);
         }
         else if (RxHeader.StdId == CAN_ID_10) // 主轴驱动器下电
         {

@@ -281,7 +281,7 @@ int main(void)
             else
                 driver_power_last = 0;
 						    //driver_power_last = 1;
-            exdevFeedback();
+            //exdevFeedback();
         }
         velocity_sum += (Velocity_FirstAxis + IMU_CAN_Message.GyroI_Align_y);
         short msg[8];
@@ -293,7 +293,7 @@ int main(void)
         msg[5] = Signal_1_High;
         msg[6] = driver_state_word;
         msg[7] = driver_state_word;
-//        send_ANO_msg(msg);
+        //send_ANO_msg(msg);
 
         if (Flag_Feedback_Timer)
         {
