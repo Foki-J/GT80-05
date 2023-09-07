@@ -49,6 +49,9 @@
 /* USER CODE BEGIN PM */
 #define SEV_BUFF_SIZE 10
 #define _ABS(x) ((x > 0) ? (x) : (-x))
+#define FILTER_BUFF_SIZE  16
+const float Num[FILTER_BUFF_SIZE] = {-0.00647772534298761,	-0.0171253282925761,	-0.0231235826272629,	-0.0107792180774813,	0.0333318246477969,	0.105109692963524,	0.182871073080483,	0.233514839639102,	0.233514839639102,	0.182871073080483,	0.105109692963524,	0.0333318246477969,	-0.0107792180774813,	-0.0231235826272629,	-0.0171253282925761	-0.00647772534298761};
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -71,6 +74,8 @@ short Pendulum_Ver_Angle = 0;
 char Flag_Battery_Timer = 0;
 int velocity_sum = 0;
 const short MAX_ANGULER = 3000;
+char index_filter_buff = 0;
+short filter_buff[FILTER_BUFF_SIZE] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -129,8 +134,8 @@ int main(void)
     udpClientInit();
     paramInit();
     CAN_Config();
-    //	LIGHT_FRONT_ON;
-    //	LIGHT_BACK_ON;
+//    	LIGHT_FRONT_ON;
+//    	LIGHT_BACK_ON;
     SPEAKER_ON;
     /* USER CODE END 2 */
 
@@ -168,20 +173,7 @@ int main(void)
         //  副轴电机转速	 Velocity_SecondAxis							0.01°/s 	前
         //  副轴电机角度	 Position_SecondAxis							0.01°		前
 
-        for (int i = 1; i < 5; i++)
-        {
-            if (abs_velocity_ball < PIDBox_ThirdAxis[3][i])
-            { // 计算PID参数
-                v_inc = (abs_velocity_ball - PIDBox_ThirdAxis[3][i - 1]) / (PIDBox_ThirdAxis[3][i] - PIDBox_ThirdAxis[3][i - 1]);
-                PID_ThirdAxis.Kp = v_inc * (PIDBox_ThirdAxis[0][i] - PIDBox_ThirdAxis[0][i - 1]) + PIDBox_ThirdAxis[0][i - 1];
-                PID_ThirdAxis.Ki = v_inc * (PIDBox_ThirdAxis[1][i] - PIDBox_ThirdAxis[1][i - 1]) + PIDBox_ThirdAxis[1][i - 1];
-                PID_ThirdAxis.Kd = v_inc * (PIDBox_ThirdAxis[2][i] - PIDBox_ThirdAxis[2][i - 1]) + PIDBox_ThirdAxis[2][i - 1];
-                break;
-            }
-        }
         //		//计算转弯时的向心力补偿//暂未补足----------------------------------------------------------------------------------------------------------------------------------------
-        //		ff_coef = (_ABS(Velocity_Hope)<200)?(0.002*_ABS(Velocity_Hope)):(0.8-0.0027*_ABS(Velocity_Hope));
-        //		ff_coef = (ff_coef<0)?0:ff_coef;
         ff_coef = asin(Velocity_Hope / 100 * Velocity_Hope / 100 * tan(Roll_Hope / 18000.0 * PI) * m_ball / m_pendulum / 9.8 / l_pendulum) * 18000.0 / PI + Roll_Hope;
         if (ff_coef > 2800)
             ff_coef = 2800; // 饱和区
@@ -199,7 +191,9 @@ int main(void)
         // 计算推进器
         v_force = V_Hope / 2;
         w_force = PID_Loc(W_Hope, IMU_CAN_Message.GyroI_Align_z, (PID_W.Ek - PID_W.Ek1), &PID_W);
-
+				
+				
+		
         // 计算主轴期望速度，防止翻滚
 				short Gyro_y_Hope = IMU_CAN_Message.GyroI_Align_y;
 				if(IMU_CAN_Message.Euler_y>0)
@@ -228,13 +222,23 @@ int main(void)
 						Velocity_Hope = (Velocity_FirstAxis+IMU_CAN_Message.GyroI_Align_y - Gyro_y_Hope)*0.007;
 					}
 				}
-
+				//计算主轴力矩
+				first = PID_Loc(Velocity_Hope, Velocity_FirstAxis*0.007, 0, &PID_FirstAxis);
+				//电流经过FIR滤波后输出
+				filter_buff[index_filter_buff] = first;
+				short filter_first = 0;
+				for(int i=0;i<FILTER_BUFF_SIZE;i++)
+				{
+					filter_first += Num[i]*filter_buff[((index_filter_buff+i>=FILTER_BUFF_SIZE)?(index_filter_buff+i-FILTER_BUFF_SIZE):index_filter_buff+i)];
+				}
+				index_filter_buff ++;
+				index_filter_buff = (index_filter_buff==FILTER_BUFF_SIZE)?0:index_filter_buff;
+				//计算主轴最大力矩
+				
         // —————————————————————————————下发控制器输出———————————————————————————//
         //  电机
-        int v_command = 0;
-        v_command = Velocity_Hope * 15455.57 ;// 7 * 5;        				// 把速度值放大到驱动器的量纲
 				if((driver_state_word&0x38) == 0x38)
-					firstAxisVelMode(v_command >> 24, v_command >> 16, v_command >> 8, v_command); // 主轴速度模式
+					firstAxisCurrentMode(filter_first>>8,filter_first);
         if((driver_state_word&0x07) == 0x07)
 					secondAxisPosMode(pos >> 24, pos >> 16, pos >> 8, pos); // 副轴位置模式
         if((driver_state_word&0x1C0) == 0x1C0)
@@ -269,19 +273,11 @@ int main(void)
             HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
             RS485_handle();
 
-            if (driver_PDO_timer > 80)
+            if (driver_PDO_timer > 200)
             {
                 driver_state_word &= 0x124;
             }
-            // 延一个周期使能
-            if (driver_power_last)
-                DriverEnable(); // 驱动器使能
-            if (driver_power)
-                driver_power_last = 1;
-            else
-                driver_power_last = 0;
-						    //driver_power_last = 1;
-            //exdevFeedback();
+            DriverEnable(); // 驱动器使能
         }
         velocity_sum += (Velocity_FirstAxis + IMU_CAN_Message.GyroI_Align_y);
         short msg[8];
@@ -290,10 +286,10 @@ int main(void)
         msg[2] = Velocity_FirstAxis + IMU_CAN_Message.GyroI_Align_y;
         msg[3] = Velocity_Hope;
         msg[4] = Roll_Hope;
-        msg[5] = Signal_1_High;
+        msg[5] = driver_PDO_timer;
         msg[6] = driver_state_word;
-        msg[7] = driver_state_word;
-        //send_ANO_msg(msg);
+        msg[7] = Current_FirstAxis;
+        send_ANO_msg(msg);
 
         if (Flag_Feedback_Timer)
         {

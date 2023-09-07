@@ -62,7 +62,8 @@ static void udpReceiveCallback(void *arg, struct udp_pcb *upcb,
                 Roll_Hope = (short)(((*((unsigned char *)p->payload + 5)) << 8) + (*((unsigned char *)p->payload + 6))) / 10;
                 char switch_cmd = *((unsigned char *)p->payload + 11);
                 // 后三位：扬声器开关|前灯开关|后灯开关
-                if ((switch_cmd & 0x01))
+              
+							if ((switch_cmd & 0x01))
                     LIGHT_BACK_ON;
                 else
                     LIGHT_BACK_OFF;
