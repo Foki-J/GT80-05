@@ -268,20 +268,12 @@ int main(void)
             Flag_LED_Toggle_Timer = 0;
             HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
             RS485_handle();
-
-            if (driver_PDO_timer > 80)
+            if (driver_PDO_timer > 100)
             {
                 driver_state_word &= 0x124;
             }
-            // 延一个周期使能
-            if (driver_power_last)
-                DriverEnable(); // 驱动器使能
-            if (driver_power)
-                driver_power_last = 1;
-            else
-                driver_power_last = 0;
-						    //driver_power_last = 1;
-            //exdevFeedback();
+            DriverEnable(); // 驱动器使能
+
         }
         velocity_sum += (Velocity_FirstAxis + IMU_CAN_Message.GyroI_Align_y);
         short msg[8];

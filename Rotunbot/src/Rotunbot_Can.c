@@ -53,7 +53,7 @@ const unsigned int servo_on = 0x0f000000;   // 电机使能
 // const unsigned int enable_set2 = 0x2b406010;					// 位置模式使能设置指令
 const unsigned int servo_on2 = 0x3f100000;             // 电机位置模式使能
 const unsigned int servo_off = 0x06000000;             // 电机非使能
-const unsigned int clear_fault = 0x86000000;
+const unsigned int clear_fault = 0x86000000;						//清除内部故障
 const unsigned int mode_select = 0x2f606000;           // 模式选择指令
 const unsigned int current_mode = 0x04000000;          // 进入电流模式
 const unsigned int current_set = 0x2b716000;           // 电流设置指令
@@ -1070,6 +1070,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         }
         else if (RxHeader.StdId == CAN_ID_15)
         {
+					  driver_state_word |= 0x20; //主轴上电位set
             if (Can_Rx_Buff[0] == 0x00) // 主轴处于非使能状态
             {
                 driver_state_word &= 0xFFE7; // 主轴使能位reset
@@ -1078,6 +1079,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             {
                 driver_state_word |= 0x10; // 主轴使能位set
                 driver_state_word |= 0x08; // 主轴模式位set
+								driver_state_word &= 0x67FF; //主轴故障位reset
             }
             else // 主轴使能但处于其他模式
             {
@@ -1090,13 +1092,14 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         else if (RxHeader.StdId == CAN_ID_17)
         {
             driver_PDO_timer = 0;
+					driver_state_word |= 0x04;  //副轴上电位set
             if (Can_Rx_Buff[0] == 0x00) // 副轴处于非使能状态
             {
                 driver_state_word &= 0xFFFC; // 副轴使能位reset
             }
             else if (Can_Rx_Buff[0] == 0x01) // 副轴当前处于位置模式？？？？？？？？？？？？？？？？？？？？？
             {
-                //			secAxisState = 1;
+                driver_state_word &= 0xF9FF;//副轴故障位reset
                 driver_state_word |= 0x02; // 副轴使能位set
                 driver_state_word |= 0x01; // 副轴模式位set
             }
@@ -1111,6 +1114,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         else if (RxHeader.StdId == CAN_ID_19)
         {
             driver_PDO_timer = 0;
+					driver_state_word |= 0x0100;  //动量轮上电set
             if(Can_Rx_Buff[0] == 0x00)								//动量轮处于非使能状态
             	{
             		driver_state_word &= 0xFF3F;      //动量轮使能位reset
@@ -1119,6 +1123,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             	{
             		driver_state_word |= 0x80;      //动量轮使能位set
             		driver_state_word |= 0x40;      //动量轮模式位set
+								driver_state_word &= 0x1FFF;    //动量轮故障位reset
             	}
             	else                              //动量轮使能但处于其他模式
             	{
