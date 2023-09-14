@@ -53,6 +53,7 @@ const unsigned int servo_on = 0x0f000000;   // 电机使能
 // const unsigned int enable_set2 = 0x2b406010;					// 位置模式使能设置指令
 const unsigned int servo_on2 = 0x3f100000;             // 电机位置模式使能
 const unsigned int servo_off = 0x06000000;             // 电机非使能
+const unsigned int clear_fault = 0x86000000;
 const unsigned int mode_select = 0x2f606000;           // 模式选择指令
 const unsigned int current_mode = 0x04000000;          // 进入电流模式
 const unsigned int current_set = 0x2b716000;           // 电流设置指令
@@ -696,7 +697,15 @@ void DriverEnable(void)
     if ((driver_state_word & 0x20) != 0) // 主轴上电
     {
         TPDO_Enable(0x00);
-        if ((driver_state_word & 0x10) == 0) // 主轴未使能
+				if((driver_state_word & 0x1800) == 0x1000) //主轴故障未处理
+				{
+					driver_state_word |= 0x0800; //已处理
+					Can_Msg_MDL = enable_set; // 主轴不使能
+					Can_Msg_MDH = clear_fault;
+					CAN_sendFirstAxis();
+					HAL_Delay(1);
+				}
+        else if ((driver_state_word & 0x10) == 0) // 主轴未使能
         {
             Can_Msg_MDL = enable_set; // 主轴使能
             Can_Msg_MDH = servo_on;
@@ -705,14 +714,23 @@ void DriverEnable(void)
         }
         else if ((driver_state_word & 0x08) == 0) // 主轴未进入模式
         {
-            firstAxisModeSelect(2);
+            firstAxisModeSelect(1);
             HAL_Delay(1);
         }
     }
+		
     if ((driver_state_word & 0x04) != 0) // 副轴上电
     {
         TPDO_Enable(0x01);
-        if ((driver_state_word & 0x02) == 0) // 副轴未使能
+				if((driver_state_word & 0x0600) == 0x0400) //副轴故障未处理
+				{
+					driver_state_word |= 0x0200; //已处理
+					Can_Msg_MDL = enable_set; // 副轴不使能
+					Can_Msg_MDH = clear_fault;
+					CAN_sendSecondAxis();
+					HAL_Delay(1);
+				}  
+				else if ((driver_state_word & 0x02) == 0) // 副轴未使能
         {
             Can_Msg_MDL = enable_set; // 副轴使能？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
             Can_Msg_MDH = servo_on2;
@@ -721,7 +739,6 @@ void DriverEnable(void)
             HAL_Delay(1);
             secondAxisPosMode(0, 0, 0, 0);
         }
-
         else if ((driver_state_word & 0x01) == 0) // 副轴未进入模式
         {
             secondAxisModeSelect(3); // ？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
@@ -730,7 +747,15 @@ void DriverEnable(void)
     if ((driver_state_word & 0x100) != 0) // 动量轮上电
     {
         TPDO_Enable(0x02);
-        if ((driver_state_word & 0x80) == 0) // 动量轮未使能
+        if((driver_state_word & 0x6000) == 0x4000) //动量轮故障未处理
+				{
+					driver_state_word |= 0x2000;//已处理
+					Can_Msg_MDL = enable_set; // 动量轮不使能
+					Can_Msg_MDH = clear_fault;
+					CAN_sendThirdAxis();
+					HAL_Delay(1);
+				}
+				else if ((driver_state_word & 0x80) == 0) // 动量轮未使能
         {
             Can_Msg_MDL = enable_set; // 动量轮使能
             Can_Msg_MDH = servo_on;
@@ -742,28 +767,7 @@ void DriverEnable(void)
         {
             thirdAxisModeSelect(1);
         }
-    }
-		if((driver_state_word & 0x1000) != 0) //主轴故障
-		{
-			Can_Msg_MDL = enable_set; // 主轴不使能
-				Can_Msg_MDH = servo_off;
-				CAN_sendFirstAxis();
-				HAL_Delay(1);
-		}
-		if((driver_state_word & 0x0400) != 0) //副轴故障
-		{
-			Can_Msg_MDL = enable_set; // 主轴不使能
-			Can_Msg_MDH = servo_off;
-			CAN_sendSecondAxis();
-			HAL_Delay(1);
-		}
-		if((driver_state_word & 0x4000) != 0) //动量轮故障
-		{
-			Can_Msg_MDL = enable_set; // 主轴不使能
-			Can_Msg_MDH = servo_off;
-			CAN_sendThirdAxis();
-			HAL_Delay(1);
-		}
+    }		
 }
 /***********************************************
 函数名称：imuFeedback
