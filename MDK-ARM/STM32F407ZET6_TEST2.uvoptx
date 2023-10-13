@@ -155,18 +155,18 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>1062</LineNumber>
+          <LineNumber>725</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134226334</Address>
+          <Address>134221286</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>D:\80鐞冨紑鍙?GT80_5_WHEEL - position6.23\Rotunbot\src\Rotunbot_Can.c</Filename>
+          <Filename>D:\80鐞冨紑鍙?git鏈湴\GT80_5_WHEEL - position8.28\Rotunbot\src\Rotunbot_Can.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\STM32F407ZET6_TEST2\../Rotunbot/src/Rotunbot_Can.c\1062</Expression>
+          <Expression>\\STM32F407ZET6_TEST2\../Rotunbot/src/Rotunbot_Can.c\725</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -229,12 +229,6 @@
       <pszMrule></pszMrule>
       <pSingCmds></pSingCmds>
       <pMultCmds></pMultCmds>
-      <SystemViewers>
-        <Entry>
-          <Name>System Viewer\TIM1</Name>
-          <WinId>35905</WinId>
-        </Entry>
-      </SystemViewers>
       <DebugDescription>
         <Enable>1</Enable>
         <EnableLog>0</EnableLog>

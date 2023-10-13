@@ -268,12 +268,17 @@ int main(void)
             Flag_LED_Toggle_Timer = 0;
             HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
             RS485_handle();
-            if (driver_PDO_timer > 100)
-            {
-                driver_state_word &= 0x124;
-            }
-            DriverEnable(); // 驱动器使能
-
+            
+						if(driver_power != 0)
+						{
+							DriverEnable(); // 驱动器使能
+							if(driver_PDO_timer > 100)
+								driver_state_word &= 0x124;
+						}
+						else if(driver_PDO_timer > 100)
+						{
+							driver_state_word = 0;
+						}
         }
         velocity_sum += (Velocity_FirstAxis + IMU_CAN_Message.GyroI_Align_y);
         short msg[8];
@@ -282,10 +287,10 @@ int main(void)
         msg[2] = Velocity_FirstAxis + IMU_CAN_Message.GyroI_Align_y;
         msg[3] = Velocity_Hope;
         msg[4] = Roll_Hope;
-        msg[5] = Signal_1_High;
-        msg[6] = driver_state_word;
+        msg[5] = driver_power;
+        msg[6] = driver_PDO_timer;
         msg[7] = driver_state_word;
-        //send_ANO_msg(msg);
+        send_ANO_msg(msg);
 
         if (Flag_Feedback_Timer)
         {

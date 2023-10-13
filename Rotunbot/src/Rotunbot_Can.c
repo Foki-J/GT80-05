@@ -714,7 +714,7 @@ void DriverEnable(void)
         }
         else if ((driver_state_word & 0x08) == 0) // 主轴未进入模式
         {
-            firstAxisModeSelect(1);
+            firstAxisModeSelect(2);
             HAL_Delay(1);
         }
     }
